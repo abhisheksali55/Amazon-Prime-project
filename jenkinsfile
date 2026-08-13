@@ -1,0 +1,63 @@
+pipeline {
+    agent any
+    environment {
+        SONAR_SCANNER_HOME = tool 'SonarQube'
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
+        IMAGE_NAME = 'divyeshsali/amezon-prime'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+    }
+
+    stages {
+        
+        stage('Git Checkout') {
+            steps {
+               git branch: 'main', url: 'https://github.com/abhisheksali55/CICD-DevopsProject.git'
+               }
+        }
+        stage('SobarQube Analysic') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                sh '''
+                    $SONAR_SCANNER_HOME/bin/sonar-scanner \
+                    -Dsonar.projectKey=CICD-DevopsProject \
+                    -Dsonar.sources=.
+                '''
+            }
+            }
+        }
+        stage('Trivy FS Scane') {
+            steps {
+              sh 'trivy fs --format table -o trivy-fs-report.html --db-repository ghcr.io/aquasecurity/trivy-db:2 .'
+
+            }
+        }
+        stage('Docker Buil Image') {
+            steps {
+                 sh "docker build -t $IMAGE_NAME:$IMAGE_TAG ."
+                 sh "docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest"
+            }
+        }
+        stage('Image Trivy Scane') {
+            steps {
+             sh "trivy image --severity HIGH,CRITICAL --format table -o trivy-image-report.html $IMAGE_NAME:$IMAGE_TAG"
+            }
+        }
+        stage('Docker Hub Login') {
+            steps {
+             sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+            }
+        }
+        stage('Docker Hub Push') {
+            steps {
+                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                sh "docker push ${IMAGE_NAME}:latest"
+            }
+        }
+        stage('Build Success Email') {
+            steps {
+                echo 'Hello World'
+            }
+        }
+        
+    }
+}
