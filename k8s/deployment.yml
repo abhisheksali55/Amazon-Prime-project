@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amezon-prime-deployment
+  labels:
+    app: amezon-prime
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: amezon-prime
+  template:
+    metadata:
+      labels:
+        app: amezon-prime
+    spec:
+      containers:
+      - name: amezon-prime
+        image: divyeshsali/amezon-prime:latest
+        ports:
+        - containerPort: 3000
