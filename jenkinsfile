@@ -6,15 +6,14 @@ pipeline {
         IMAGE_NAME = 'divyeshsali/amezon-prime'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
     }
-
     stages {
         
         stage('Git Checkout') {
             steps {
-               git branch: 'main', url: 'https://github.com/abhisheksali55/CICD-DevopsProject.git'
+               git branch: 'main', url: 'https://github.com/abhisheksali55/Amazon-Prime-project.git'
                }
         }
-        stage('SobarQube Analysic') {
+        stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
                 sh '''
@@ -25,19 +24,18 @@ pipeline {
             }
             }
         }
-        stage('Trivy FS Scane') {
+        stage('Trivy FS Scan') {
             steps {
               sh 'trivy fs --format table -o trivy-fs-report.html --db-repository ghcr.io/aquasecurity/trivy-db:2 .'
-
             }
         }
-        stage('Docker Buil Image') {
+        stage('Docker Build Image') {
             steps {
                  sh "docker build -t $IMAGE_NAME:$IMAGE_TAG ."
                  sh "docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest"
             }
         }
-        stage('Image Trivy Scane') {
+        stage('Image Trivy Scan') {
             steps {
              sh "trivy image --severity HIGH,CRITICAL --format table -o trivy-image-report.html $IMAGE_NAME:$IMAGE_TAG"
             }
@@ -53,10 +51,30 @@ pipeline {
                 sh "docker push ${IMAGE_NAME}:latest"
             }
         }
-        stage('Build Success Email') {
+        stage('Update Kubernetes Manifest') {
             steps {
                 echo 'Hello World'
             }
+        }
+        
+    }
+
+    post {
+        success {
+            emailext (
+                subject: "✅ SUCCESS: '${env.JOB_NAME}' [${env.BUILD_NUMBER}]",
+                body: "Build successful! Image: ${IMAGE_NAME}:${IMAGE_TAG}<br>URL: ${env.BUILD_URL}",
+                to: 'abhisheksali55@gmail.com',
+                mimeType: 'text/html'
+            )
+        }
+        failure {
+            emailext (
+                subject: "❌ FAILED: '${env.JOB_NAME}' [${env.BUILD_NUMBER}]",
+                body: "Build failed. Check logs: ${env.BUILD_URL}console",
+                to: 'abhisheksali55@gmail.com',
+                mimeType: 'text/html'
+            )
         }
         
     }
